@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.urls import reverse
 
 NAME_LENGTH = 256
 
@@ -86,6 +87,10 @@ class Post(BaseModel):
         on_delete=models.SET_NULL,
         null=True,
         verbose_name='Категория',
+    )
+    image = models.ImageField(
+        blank=True,
+        verbose_name='Фото'
     )
 
     class Meta:

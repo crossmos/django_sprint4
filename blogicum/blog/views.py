@@ -1,9 +1,23 @@
+from django import forms
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, render
+from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.urls import reverse_lazy
 from django.utils import timezone
 
-from blog.models import Category, Post
+from blog.models import Category, Post, User
+from .forms import UserForm, PostForm
 
-POSTS_LIMIT = 5
+
+def profile(request, username):
+    template_name = 'blog/profile.html'
+    context = {
+        'profile': get_object_or_404(
+            User,
+            username=username
+        )
+    }
+    return render(request, template_name, context)
 
 
 def get_post_list():
@@ -18,12 +32,49 @@ def get_post_list():
     )
 
 
-def index(request):
+class PostCreateView(LoginRequiredMixin, CreateView):
+    model = Post
+    form_class = PostForm
+    template_name = 'blog/create.html'
+    success_url = reverse_lazy('blog:profile')
+
+
+class PostDetailView(DeleteView):
+    model = Post
+
+
+class PostListView(ListView):
+    model = Post
     template_name = 'blog/index.html'
-    context = {
-        'post_list': get_post_list()[:POSTS_LIMIT]
-    }
-    return render(request, template_name, context)
+    paginate_by = 10
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_obj'] = get_post_list()
+        return context
+
+
+class PostUpdateView(LoginRequiredMixin, UpdateView):
+    model = Post
+    template_name = 'blog/create.html'
+    form_class = PostForm
+    success_url = reverse_lazy('blog:index')
+
+
+class PostDeleteView(LoginRequiredMixin, DeleteView):
+    model = Post
+    template_name = 'blog/create.html'
+    success_url = reverse_lazy('blog:index')
+
+
+class ProfileUpdateView(LoginRequiredMixin, UpdateView):
+    model = User
+    template_name = 'blog/user.html'
+    form_class = UserForm
+    success_url = reverse_lazy('blog:index')
+
+    def get_object(self):
+        return self.request.user
 
 
 def category_posts(request, category_slug):

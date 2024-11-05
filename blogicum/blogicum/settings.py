@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-mn^0j-9kao))g5==kkl&g#z3b7&mrje!06awkb2c)&*&5*#ihu'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 CSRF_FAILURE_VIEW = 'core.views.error_403_csrf'
 
@@ -60,7 +60,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'blogicum.urls'
 
-TEMPLATES_DIR = str(BASE_DIR / 'templates')
+TEMPLATES_DIR = Path.joinpath(BASE_DIR, 'templates')
 
 TEMPLATES = [
     {
@@ -131,10 +131,16 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    Path.joinpath(BASE_DIR, 'static')
 ]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
+
+EMAIL_FILE_PATH = Path.joinpath(BASE_DIR, 'sent_emails')
+
+LOGIN_REDIRECT_URL = 'blog:index'
