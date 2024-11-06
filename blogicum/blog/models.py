@@ -59,6 +59,10 @@ class Category(BaseModel):
         return self.title
 
 
+class Comment(models.Model):
+    title = models.TextField()
+
+
 class Post(BaseModel):
     title = models.CharField(max_length=NAME_LENGTH, verbose_name='Заголовок')
     text = models.TextField(verbose_name='Текст')

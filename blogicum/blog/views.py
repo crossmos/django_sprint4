@@ -1,23 +1,15 @@
 from django import forms
+from django.core.paginator import Paginator
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models.query import QuerySet
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
-from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.views.generic import CreateView, DetailView, DeleteView, ListView, UpdateView
 from django.urls import reverse_lazy
 from django.utils import timezone
 
 from blog.models import Category, Post, User
 from .forms import UserForm, PostForm
-
-
-def profile(request, username):
-    template_name = 'blog/profile.html'
-    context = {
-        'profile': get_object_or_404(
-            User,
-            username=username
-        )
-    }
-    return render(request, template_name, context)
 
 
 def get_post_list():
@@ -32,6 +24,29 @@ def get_post_list():
     )
 
 
+def profile(request, slug):
+    template_name = 'blog/profile.html'
+
+    context = {
+        'profile': get_object_or_404(
+            User,
+            username=slug
+        ),
+        'page_obj': Post.objects.filter(
+            author__id=get_object_or_404(
+                User,
+                username=slug
+            ).pk
+        )
+    }
+    paginator = Paginator(context['page_obj'], 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    context = {'page_obj': page_obj}
+
+    return render(request, template_name, context)
+
+
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
@@ -39,19 +54,16 @@ class PostCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('blog:profile')
 
 
-class PostDetailView(DeleteView):
+class PostDetailView(DetailView):
     model = Post
+    template_name = 'blog/detail.html'
 
 
 class PostListView(ListView):
     model = Post
+    queryset = get_post_list()
     template_name = 'blog/index.html'
     paginate_by = 10
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['page_obj'] = get_post_list()
-        return context
 
 
 class PostUpdateView(LoginRequiredMixin, UpdateView):
@@ -77,37 +89,21 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
         return self.request.user
 
 
-def category_posts(request, category_slug):
+class CategoryPostsListView(LoginRequiredMixin, ListView):
+    model = Post
     template_name = 'blog/category.html'
-    category = get_object_or_404(
-        Category,
-        slug=category_slug,
-        is_published=True
-    )
-    context = {
-        'category': category,
-        'post_list': get_post_list().filter(
-            category__slug=category_slug
+    paginate_by = 10
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context['category'] = get_object_or_404(
+            Category,
+            slug=self.kwargs['slug'],
+            is_published=True
         )
-    }
-    return render(
-        request,
-        template_name,
-        context
-    )
+        return context
 
-
-def post_detail(request, post_id):
-    template_name = 'blog/detail.html'
-    post = get_object_or_404(
-        get_post_list(),
-        pk=post_id
-    )
-    context = {
-        'post': post
-    }
-    return render(
-        request,
-        template_name,
-        context
-    )
+    def get_queryset(self):
+        return Post.objects.filter(
+            category__slug=self.kwargs['slug']
+        )
