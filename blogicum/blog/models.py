@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.urls import reverse
+
 
 NAME_LENGTH = 256
 
@@ -60,7 +60,33 @@ class Category(BaseModel):
 
 
 class Comment(models.Model):
-    title = models.TextField()
+    text = models.TextField(
+        max_length=NAME_LENGTH,
+        verbose_name='Комментарий'
+    )
+
+    post = models.ForeignKey(
+        'Post',
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    created_at = models.DateTimeField(auto_now_add=True,
+                                      verbose_name='Дата и время '
+                                      'добавления комментария'
+                                      )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор комментария'
+    )
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+        ordering = ('created_at',)
+
+    def __str__(self):
+        return f"{self.author.username}: {self.text[:50]}"
 
 
 class Post(BaseModel):
