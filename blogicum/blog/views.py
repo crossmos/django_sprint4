@@ -1,6 +1,5 @@
 from django.core.paginator import Paginator
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db.models import Count
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, render
 from django.views.generic import (
     CreateView,
@@ -9,70 +8,18 @@ from django.views.generic import (
     ListView,
     UpdateView
 )
-from django.urls import reverse
-from django.utils import timezone
-from django.shortcuts import redirect
 
-from blogicum.settings import PAGINATE_BY
+from django.conf import settings
+from .mixins import (
+    CommentMixin,
+    PostMixin,
+    OnlyAuthorMixin,
+    ReversePostDetailMixin,
+    ReverseProfileMixin
+)
 from .models import Comment, Post, User
 from .forms import CommentForm, UserForm, PostForm
-from .utils import get_category, get_posts
-
-
-class CommentMixin:
-    """Миксин, передающий базовые параметры для CBV комментов"""
-
-    model = Comment
-    pk_url_kwarg = 'comment_id'
-    template_name = 'blog/comment.html'
-
-    def get_object(self):
-        return get_object_or_404(
-            Comment,
-            pk=self.kwargs['comment_id'],
-            post=self.kwargs['post_id']
-        )
-
-
-class PostMixin:
-    """Миксин, передающий базовые параметры для CBV постов"""
-
-    model = Post
-    pk_url_kwarg = 'post_id'
-
-
-class ReversePostDetailMixin:
-    """Миксин, отвечающий за реверс на страницу поста"""
-
-    def get_success_url(self):
-        return reverse(
-            'blog:post_detail',
-            kwargs={'post_id': self.kwargs['post_id']}
-        )
-
-
-class ReverseProfileMixin:
-    """Миксин, отвечающий за реверс на профиль"""
-
-    def get_success_url(self):
-        return reverse(
-            'blog:profile',
-            kwargs={'username': self.request.user}
-        )
-
-
-class OnlyAuthorMixin(UserPassesTestMixin):
-    """Миксин, проверяющий авторство"""
-
-    def test_func(self):
-        object = self.get_object()
-        return object.author == self.request.user
-
-    def handle_no_permission(self):
-        return redirect(
-            'blog:post_detail',
-            post_id=self.kwargs['post_id']
-        )
+from .query_utils import CategoryPage, get_posts
 
 
 class PostCreateView(
@@ -97,7 +44,7 @@ class PostDetailView(PostMixin, DetailView):
             get_posts(), pk=self.kwargs['post_id'])
         if post.author != self.request.user:
             return get_object_or_404(
-                get_posts(filtred=True, annotated=True),
+                get_posts(filtred=True),
                 pk=self.kwargs['post_id']
             )
         return post
@@ -105,14 +52,13 @@ class PostDetailView(PostMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
-        context['comments'] = Comment.objects.filter(
-            post_id=self.kwargs['post_id'])
+        context['comments'] = self.object.comments.all()
         return context
 
 
 class PostListView(PostMixin, ListView):
     template_name = 'blog/index.html'
-    paginate_by = PAGINATE_BY
+    paginate_by = settings.PAGINATE_BY
 
     def get_queryset(self):
         return get_posts(filtred=True, annotated=True)
@@ -149,17 +95,18 @@ class ProfileUpdateView(LoginRequiredMixin, ReverseProfileMixin, UpdateView):
 class CategoryPostsListView(ListView):
     model = Post
     template_name = 'blog/category.html'
-    paginate_by = PAGINATE_BY
+    paginate_by = settings.PAGINATE_BY
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data()
-        context['category'] = get_category(self)
+        context['category'] = CategoryPage.get_category(self)
         return context
 
     def get_queryset(self):
-        get_category(self)
-        return get_posts(filtred=True, annotated=True).filter(
-            category__slug=self.kwargs['category_slug']
+        return get_posts(
+            manager=CategoryPage.get_category(self).posts,
+            filtred=True,
+            annotated=True
         )
 
 
@@ -167,6 +114,8 @@ class CommentCreateView(
     LoginRequiredMixin,
     ReversePostDetailMixin,
     CreateView
+
+
 ):
     model = Comment
     form_class = CommentForm
@@ -180,7 +129,7 @@ class CommentCreateView(
 class CommentListView(ListView):
     model = Comment
     template_name = 'blog/comments.html'
-    paginate_by = PAGINATE_BY
+    paginate_by = settings.PAGINATE_BY
 
 
 class CommentUpdateView(
@@ -208,19 +157,13 @@ def profile(request, username):
         username=username
     )
 
-    if str(request.user) == profile.username:
-        posts = profile.posts.annotate(
-            comment_count=Count('comments')
-        ).order_by('-pub_date')
-    else:
-        posts = profile.posts.filter(
-            pub_date__lte=timezone.now(),
-            is_published=True
-        ).annotate(
-            comment_count=Count('comments')
-        ).order_by('-pub_date')
+    posts = get_posts(
+        manager=profile.posts,
+        filtred=(request.user != profile),
+        annotated=True
+    )
 
-    paginator = Paginator(posts, PAGINATE_BY)
+    paginator = Paginator(posts, settings.PAGINATE_BY)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

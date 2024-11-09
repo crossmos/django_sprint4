@@ -25,9 +25,12 @@ def get_posts(manager=Post.objects, filtred=False, annotated=False):
     return queryset
 
 
-def get_category(self):
-    return get_object_or_404(
-        Category,
-        slug=self.kwargs['category_slug'],
-        is_published=True
-    )
+class CategoryPage:
+    """Класс для работы с категориями"""
+
+    def get_category(self):
+        return get_object_or_404(
+            Category,
+            slug=self.kwargs['category_slug'],
+            is_published=True
+        )
