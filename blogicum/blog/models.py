@@ -24,20 +24,6 @@ class BaseModel(models.Model):
         abstract = True
 
 
-class Location(BaseModel):
-    name = models.CharField(
-        max_length=NAME_LENGTH,
-        verbose_name='Название места'
-    )
-
-    class Meta:
-        verbose_name = 'местоположение'
-        verbose_name_plural = 'Местоположения'
-
-    def __str__(self):
-        return self.name
-
-
 class Category(BaseModel):
     title = models.CharField(max_length=NAME_LENGTH, verbose_name='Заголовок')
     description = models.TextField(verbose_name='Описание')
@@ -59,34 +45,18 @@ class Category(BaseModel):
         return self.title
 
 
-class Comment(models.Model):
-    text = models.TextField(
+class Location(BaseModel):
+    name = models.CharField(
         max_length=NAME_LENGTH,
-        verbose_name='Комментарий'
-    )
-
-    post = models.ForeignKey(
-        'Post',
-        on_delete=models.CASCADE,
-        related_name='comments'
-    )
-    created_at = models.DateTimeField(auto_now_add=True,
-                                      verbose_name='Дата и время '
-                                      'добавления комментария'
-                                      )
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        verbose_name='Автор комментария'
+        verbose_name='Название места'
     )
 
     class Meta:
-        verbose_name = 'Комментарий'
-        verbose_name_plural = 'Комментарии'
-        ordering = ('created_at',)
+        verbose_name = 'местоположение'
+        verbose_name_plural = 'Местоположения'
 
     def __str__(self):
-        return f"{self.author.username}: {self.text[:50]}"
+        return self.name
 
 
 class Post(BaseModel):
@@ -131,3 +101,35 @@ class Post(BaseModel):
 
     def __str__(self):
         return self.title
+
+
+class Comment(models.Model):
+    text = models.TextField(
+        max_length=NAME_LENGTH,
+        verbose_name='Комментарий'
+    )
+
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата и время '
+        'добавления комментария'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор комментария'
+    )
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+        default_related_name = 'comments'
+        ordering = ('created_at',)
+
+    def __str__(self):
+        return f"{self.author.username}: {self.text[:50]}"

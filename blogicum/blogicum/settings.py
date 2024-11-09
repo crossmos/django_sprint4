@@ -146,3 +146,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = Path.joinpath(BASE_DIR, 'sent_emails')
 
 LOGIN_REDIRECT_URL = 'blog:index'
+
+PAGINATE_BY = 10
